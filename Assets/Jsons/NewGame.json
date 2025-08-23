@@ -1,0 +1,141 @@
+{
+	"Countries": [
+	{
+		"Name": "Iran",
+		"Population": 90,
+		"Forces": 171,
+		"Income": 5,
+		"DeplomacyRate": 5.5,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Kuwait",
+		"Population": 5,
+		"Forces": 74,
+		"Income": 32,
+		"DeplomacyRate": 6.4,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Iraq",
+		"Population": 50,
+		"Forces": 142,
+		"Income": 6,
+		"DeplomacyRate": 4.5,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Turkiye",
+		"Population": 90,
+		"Forces": 242,
+		"Income": 14,
+		"DeplomacyRate": 7.5,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Syria",
+		"Population": 25,
+		"Forces": 100,
+		"Income": 1,
+		"DeplomacyRate": 2.5,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Jordan",
+		"Population": 11,
+		"Forces": 25,
+		"Income": 5,
+		"DeplomacyRate": 5.4,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Saudi Arabia",
+		"Population": 35,
+		"Forces": 144,
+		"Income": 33,
+		"DeplomacyRate": 7.8,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Bahrain",
+		"Population": 2,
+		"Forces": 22,
+		"Income": 30,
+		"DeplomacyRate": 6.2,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Qatar",
+		"Population": 3,
+		"Forces": 80,
+		"Income": 72,
+		"DeplomacyRate": 7.5,
+		"IsCaptured": false
+	},
+	{
+		"Name": "United Arab Emirates",
+		"Population": 10,
+		"Forces": 107,
+		"Income": 50,
+		"DeplomacyRate": 8.5,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Oman",
+		"Population": 5,
+		"Forces": 32,
+		"Income": 21,
+		"DeplomacyRate": 6,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Yemen",
+		"Population": 40,
+		"Forces": 22,
+		"Income": 1,
+		"DeplomacyRate": 2.8,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Palestine",
+		"Population": 5,
+		"Forces": 4,
+		"Income": 3,
+		"DeplomacyRate": 5,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Israel",
+		"Population": 10,
+		"Forces": 146,
+		"Income": 26,
+		"DeplomacyRate": 7.5,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Lebanon",
+		"Population": 6,
+		"Forces": 16,
+		"Income": 3,
+		"DeplomacyRate": 4.8,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Northern Cyprus",
+		"Population": 1,
+		"Forces": 242,
+		"Income": 14,
+		"DeplomacyRate": 3,
+		"IsCaptured": false
+	},
+	{
+		"Name": "Southern Cyprus",
+		"Population": 1,
+		"Forces": 91,
+		"Income": 34,
+		"DeplomacyRate": 7,
+		"IsCaptured": false
+	}
+  ],
+  "Money": 0
+}
