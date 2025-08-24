@@ -50,7 +50,7 @@ public class InputController : MonoBehaviour
             }
             else
             {
-                GameManager.Instance.Countries.Find(_ => _.Name == hit.collider.name).IsCaptured = true;
+                GameManager.Instance.CaptureCountry(GameManager.Instance.Countries.Find(_ => _.Name == hit.collider.name));
                 GameManager.Instance.Startgame = true;
             }
             

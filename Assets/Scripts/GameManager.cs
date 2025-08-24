@@ -1,11 +1,9 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
-using Unity.IntegerTime;
-using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.UIElements.Experimental;
 
 public class GameManager : MonoBehaviour
 {
@@ -84,6 +82,13 @@ public class GameManager : MonoBehaviour
         }
         
     }
+
+    public void CaptureCountry(CountryInformation target)
+    {
+        GameObject.Find(target.Name).GetComponent<SpriteRenderer>().color = Color.Lerp(Color.blue, Color.green, 0.75f);
+            target.IsCaptured = true;
+    }
+
     public void AttackEvent(CountryInformation attacker)
     {
         List<CountryInformation> possibleTargets = new List<CountryInformation>();
@@ -135,7 +140,7 @@ public class GameManager : MonoBehaviour
                 }
             }
 
-            
+
         }
 
 
@@ -146,11 +151,11 @@ public class GameManager : MonoBehaviour
         {
             weights[i] += maxNegativeValue;
             totalWeight += weights[i];
-            print("#" + weights[i] + " "+possibleTargets[i].Name);
+            print("#" + weights[i] + " " + possibleTargets[i].Name);
         }
-        
-        
-        int randomValue = Random.Range(0, totalWeight+1);
+
+
+        int randomValue = Random.Range(0, totalWeight + 1);
         int cumulative = 0;
 
         for (int i = 0; i < possibleTargets.Count; i++)
@@ -159,11 +164,11 @@ public class GameManager : MonoBehaviour
             if (randomValue <= cumulative)
             {
                 var target = possibleTargets[i];
-                AttackStart(ref target, ref attacker);
-                print("cumulative: "+ cumulative);
+                AttackStart(target, attacker);
+                print("cumulative: " + cumulative);
                 return;
             }
-            
+
         }
     }
 
@@ -173,18 +178,23 @@ public class GameManager : MonoBehaviour
     [SerializeField] TMP_Text uiPopulation;
     [SerializeField] TMP_Text uiForces;
     [SerializeField] TMP_Text uiIncome;
+    [SerializeField] Button uiAttackButton;
     [SerializeField] Slider uiDiplomacyRate;
+    [SerializeField] GameObject uiBackground;
     [SerializeField] Animator countryPanelAnimator;
     [SerializeField] Animator newsAnimator;
+    [SerializeField] Animator CountrySelectorAnimator;
 
 
     public void CountryPanelSet(CountryInformation info)
     {
         uiName.text = info.Name;
         uiPopulation.text = "Population: " + info.Population + "M";
-        uiForces.text = "Forces: " + info.Population + "K";
+        uiForces.text = "Forces: " + info.Forces + "K";
         uiIncome.text = "Income: +" + info.Income + "K";
         uiDiplomacyRate.value = info.DeplomacyRate;
+        if (info.IsCaptured) uiAttackButton.interactable = false;
+        else uiAttackButton.interactable = true;
         //CountryPanel Animation
         countryPanelAnimator.SetTrigger("Open");
     }
@@ -201,17 +211,71 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    [SerializeField] Button CountrySelectorOkButton;     // دکمه تایید
+    [SerializeField] Button CountrySelectorCancelButton; // دکمه لغو
+    [SerializeField] TMP_Dropdown CountrySelectorDropDown;
+
+    IEnumerator CountrySelectorSet(System.Action<CountryInformation> onResult)
+    {
+        uiBackground.SetActive(true);
+
+        {
+            CountrySelectorDropDown.ClearOptions();
+            List<TMP_Dropdown.OptionData> optionDataList = new List<TMP_Dropdown.OptionData>();
+            foreach (var item in Countries.FindAll(_=>_.IsCaptured))
+            {
+                TMP_Dropdown.OptionData optionData = new TMP_Dropdown.OptionData();
+                optionData.text = item.Name;
+                optionDataList.Add(optionData);
+            }
+            CountrySelectorDropDown.AddOptions(optionDataList);
+        }
+
+        CountrySelectorAnimator.SetTrigger("Open");
+
+        bool result = false;
+        bool finished = false;
+
+        // گوش دادن به دکمه‌ها
+        CountrySelectorOkButton.onClick.AddListener(() => {
+            result = true;
+            finished = true;
+        });
+
+        CountrySelectorCancelButton.onClick.AddListener(() => {
+            result = false;
+            finished = true;
+        });
+
+        // صبر تا یکی از دکمه‌ها کلیک شود
+        yield return new WaitUntil(() => finished);
+
+        // برای جلوگیری از ثبت چندباره لیسنرها
+        CountrySelectorOkButton.onClick.RemoveAllListeners();
+        CountrySelectorCancelButton.onClick.RemoveAllListeners();
+
+        // برگرداندن نتیجه
+        CountrySelectorAnimator.SetTrigger("Close");
+        uiBackground.SetActive(false);
+        if (result) onResult?.Invoke(Countries.FindAll(_=>_.IsCaptured)[CountrySelectorDropDown.value]);
+        else onResult?.Invoke(null);
+        
+
+    }
+
     [SerializeField] GameObject uiNewsTextPrefab;
     [SerializeField] GameObject uiNewsTextContent;
     [SerializeField] TMP_Text LatestNewsText;
     public List<string> Warlog;
-    void WarlogLatestUpdate()
+
+    void WarlogLatestUpdate(string message)
     {
-        LatestNewsText.text = "Latest News: " + Warlog.Last();
+        Warlog.Add(message);
+        LatestNewsText.text = "Latest News: " + message;
         if (Warlog.Count > 1)
         {
-            var _instance = Instantiate(uiNewsTextPrefab, uiNewsTextContent.transform);
-            _instance.GetComponent<TMP_Text>().text = Warlog[Warlog.Count - 2];
+            //var _instance = Instantiate(uiNewsTextPrefab, uiNewsTextContent.transform);
+            //_instance.GetComponent<TMP_Text>().text = Warlog[Warlog.Count - 2];
         }
     }
 
@@ -220,62 +284,60 @@ public class GameManager : MonoBehaviour
 
     public void AttackStartButton() // Will call when clicked on Attack button 
     {
-        var countries = Countries.Find(_ => _.Name == uiName.text);
         CountryInformation attacker = null;
-        AttackStart(ref countries, ref attacker);
+        StartCoroutine(CountrySelectorSet(result =>
+        {
+            attacker = result;
+            if (result == null) return;
+            var countries = Countries.Find(_ => _.Name == uiName.text);
+            AttackStart(countries, attacker);
+        }));
     }
 
     //Attack section
 
-    public void AttackStart(ref CountryInformation defender, ref CountryInformation attacker)
+    public void AttackStart(CountryInformation defender, CountryInformation attacker)
     {
-        if (attacker == null)
-        {
-            // Just for test
-            // Later, Should add a pop-up menu for choosing country
-            attacker = Countries.Find(_ => _.Name == "Iran");
-        }
+
 
         float ratio = (attacker.Forces / Mathf.Max(0.1f, defender.Forces)) + Random.Range(-0.1f, 0.1f);
         if (ratio >= 1.2)
         {
-            Warlog.Add(attacker.Name + " wins against " + defender.Name);
-            WarlogLatestUpdate();
-            attacker.Forces -= Mathf.Ceil(attacker.Forces * 0.1f);
-            defender.Forces -= Mathf.Ceil(defender.Forces * 0.2f);
-            if (defender.Forces == 0 && attacker.IsCaptured)
+            WarlogLatestUpdate(attacker.Name + " wins against " + defender.Name);
+            attacker.Forces -= Mathf.Ceil(defender.Forces * 0.2f);
+            defender.Forces -= Mathf.Ceil(attacker.Forces * 0.1f);
+            if (defender.Forces <= 0 && attacker.IsCaptured)
             {
-                defender.IsCaptured = true;
-                Warlog.Add(defender.Name + " captured");
-                WarlogLatestUpdate();
+                CaptureCountry(defender);
+                WarlogLatestUpdate(defender.Name + " captured");
             }
         }
         else if (ratio >= 0.8)
         {
-            attacker.Forces -= Mathf.Ceil(attacker.Forces * 0.4f);
-            defender.Forces -= Mathf.Ceil(defender.Forces * 0.4f);
-            Warlog.Add(attacker.Name + " hurts " + defender.Name);
-            WarlogLatestUpdate();
+            attacker.Forces -= Mathf.Ceil(defender.Forces * 0.4f);
+            defender.Forces -= Mathf.Ceil(attacker.Forces * 0.4f);
+            WarlogLatestUpdate(attacker.Name + " hurts " + defender.Name);
         }
         else
         {
-            attacker.Forces -= Mathf.Ceil(attacker.Forces * 0.2f);
-            defender.Forces -= Mathf.Ceil(defender.Forces * 0.1f);
+            attacker.Forces -= Mathf.Ceil(defender.Forces * 0.1f);
+            defender.Forces -= Mathf.Ceil(attacker.Forces * 0.2f);
             if (attacker.Forces <= 0 && attacker.IsCaptured)
             {
                 attacker.IsCaptured = false;
-                Warlog.Add(attacker.Name + " lost");
+                WarlogLatestUpdate(attacker.Name + " lost");
                 if (Countries.FindAll(_ => _.IsCaptured).Count == 0)
                 {
                     print("You lost");
                     Application.Quit();
                 }
             }
-            Warlog.Add(attacker.Name + " loses against " + defender.Name);
-            WarlogLatestUpdate();
+            WarlogLatestUpdate(attacker.Name + " loses against " + defender.Name);
         }
         if (attacker.Forces < 0) attacker.Forces = 0;
         if (defender.Forces < 0) defender.Forces = 0;
+
+        CountryPanelSet(defender);
     }
 
 }
