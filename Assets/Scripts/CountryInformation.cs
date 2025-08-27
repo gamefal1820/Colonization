@@ -7,7 +7,7 @@ public class CountryInformation
 
     public int Population;
     public float Forces;
-    public int Income;
+    public float Income;
     public float DeplomacyRate;
 
     public bool IsCaptured;

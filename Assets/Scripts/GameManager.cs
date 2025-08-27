@@ -11,7 +11,9 @@ public class GameManager : MonoBehaviour
 
     public TextAsset NewgamejsonFile;
 
-    public int Money;
+    float money;
+
+    public float Money { get { return money; } set { uiMoney.text = value + "$"; money = value; } }
 
     public bool Startgame;
 
@@ -43,7 +45,7 @@ public class GameManager : MonoBehaviour
     int randomizer;
     public void TheGameProcess()
     {
-        
+
         //Giving Income
         timerForMoney += Time.deltaTime;
         timerForEvents += Time.deltaTime;
@@ -80,13 +82,23 @@ public class GameManager : MonoBehaviour
             default:
                 break;
         }
-        
+        CountryPanelRefresh();
+
     }
 
-    public void CaptureCountry(CountryInformation target)
+    public void CountryState(CountryInformation target, bool captureState)
     {
-        GameObject.Find(target.Name).GetComponent<SpriteRenderer>().color = Color.Lerp(Color.blue, Color.green, 0.75f);
+        if (captureState)
+        {
+            GameObject.Find(target.Name).GetComponent<SpriteRenderer>().color = Color.Lerp(Color.blue, Color.green, 0.75f);
             target.IsCaptured = true;
+        }
+        else
+        {
+            GameObject.Find(target.Name).GetComponent<SpriteRenderer>().color = Color.Lerp(Color.white, Color.white, 0);
+            target.IsCaptured = false;
+        }
+
     }
 
     public void AttackEvent(CountryInformation attacker)
@@ -174,6 +186,8 @@ public class GameManager : MonoBehaviour
 
     //UI section
 
+    [SerializeField] TMP_Text uiMoney;
+
     [SerializeField] TMP_Text uiName;
     [SerializeField] TMP_Text uiPopulation;
     [SerializeField] TMP_Text uiForces;
@@ -198,16 +212,17 @@ public class GameManager : MonoBehaviour
         //CountryPanel Animation
         countryPanelAnimator.SetTrigger("Open");
     }
+    public void CountryPanelRefresh() { if (countryPanelAnimator.GetCurrentAnimatorClipInfo(0)[0].clip.name == "PanelOpen") CountryPanelSet(Countries.Find(_ => _.Name == uiName.text)); }
     public void NewsSet()
     {
         var _clipInfo = newsAnimator.GetCurrentAnimatorClipInfo(0)[0].clip.name;
         if (_clipInfo == "NewsOpen")
         {
-            newsAnimator.SetTrigger("Close");  
+            newsAnimator.SetTrigger("Close");
         }
         else if (_clipInfo == "NewsClose")
         {
-            newsAnimator.SetTrigger("Open"); 
+            newsAnimator.SetTrigger("Open");
         }
     }
 
@@ -222,7 +237,7 @@ public class GameManager : MonoBehaviour
         {
             CountrySelectorDropDown.ClearOptions();
             List<TMP_Dropdown.OptionData> optionDataList = new List<TMP_Dropdown.OptionData>();
-            foreach (var item in Countries.FindAll(_=>_.IsCaptured))
+            foreach (var item in Countries.FindAll(_ => _.IsCaptured))
             {
                 TMP_Dropdown.OptionData optionData = new TMP_Dropdown.OptionData();
                 optionData.text = item.Name;
@@ -237,12 +252,14 @@ public class GameManager : MonoBehaviour
         bool finished = false;
 
         // گوش دادن به دکمه‌ها
-        CountrySelectorOkButton.onClick.AddListener(() => {
+        CountrySelectorOkButton.onClick.AddListener(() =>
+        {
             result = true;
             finished = true;
         });
 
-        CountrySelectorCancelButton.onClick.AddListener(() => {
+        CountrySelectorCancelButton.onClick.AddListener(() =>
+        {
             result = false;
             finished = true;
         });
@@ -257,9 +274,9 @@ public class GameManager : MonoBehaviour
         // برگرداندن نتیجه
         CountrySelectorAnimator.SetTrigger("Close");
         uiBackground.SetActive(false);
-        if (result) onResult?.Invoke(Countries.FindAll(_=>_.IsCaptured)[CountrySelectorDropDown.value]);
+        if (result) onResult?.Invoke(Countries.FindAll(_ => _.IsCaptured)[CountrySelectorDropDown.value]);
         else onResult?.Invoke(null);
-        
+
 
     }
 
@@ -274,8 +291,8 @@ public class GameManager : MonoBehaviour
         LatestNewsText.text = "Latest News: " + message;
         if (Warlog.Count > 1)
         {
-            //var _instance = Instantiate(uiNewsTextPrefab, uiNewsTextContent.transform);
-            //_instance.GetComponent<TMP_Text>().text = Warlog[Warlog.Count - 2];
+            var _instance = Instantiate(uiNewsTextPrefab, uiNewsTextContent.transform);
+            _instance.GetComponent<TMP_Text>().text = Warlog[Warlog.Count - 2];
         }
     }
 
@@ -291,6 +308,7 @@ public class GameManager : MonoBehaviour
             if (result == null) return;
             var countries = Countries.Find(_ => _.Name == uiName.text);
             AttackStart(countries, attacker);
+            CountryPanelRefresh();
         }));
     }
 
@@ -308,7 +326,7 @@ public class GameManager : MonoBehaviour
             defender.Forces -= Mathf.Ceil(attacker.Forces * 0.1f);
             if (defender.Forces <= 0 && attacker.IsCaptured)
             {
-                CaptureCountry(defender);
+                CountryState(defender, true);
                 WarlogLatestUpdate(defender.Name + " captured");
             }
         }
@@ -322,9 +340,10 @@ public class GameManager : MonoBehaviour
         {
             attacker.Forces -= Mathf.Ceil(defender.Forces * 0.1f);
             defender.Forces -= Mathf.Ceil(attacker.Forces * 0.2f);
+            WarlogLatestUpdate(attacker.Name + " loses against " + defender.Name);
             if (attacker.Forces <= 0 && attacker.IsCaptured)
             {
-                attacker.IsCaptured = false;
+                CountryState(attacker, false);
                 WarlogLatestUpdate(attacker.Name + " lost");
                 if (Countries.FindAll(_ => _.IsCaptured).Count == 0)
                 {
@@ -332,12 +351,10 @@ public class GameManager : MonoBehaviour
                     Application.Quit();
                 }
             }
-            WarlogLatestUpdate(attacker.Name + " loses against " + defender.Name);
+
         }
         if (attacker.Forces < 0) attacker.Forces = 0;
         if (defender.Forces < 0) defender.Forces = 0;
-
-        CountryPanelSet(defender);
     }
 
 }
