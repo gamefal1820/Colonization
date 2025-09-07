@@ -4,6 +4,7 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Reflection;
 
 public class GameManager : MonoBehaviour
 {
@@ -13,11 +14,15 @@ public class GameManager : MonoBehaviour
 
     float money;
 
-    public float Money { get { return money; } set { uiMoney.text = value + "$"; money = value; } }
+    public float Money { get { return money; } set { money = Mathf.Round(value * 100) / 100; uiMoney.text = money + "$"; } }
 
     public bool Startgame;
 
     public List<CountryInformation> Countries;
+
+    public static IReadOnlyList<float> InitCountriesIncome;
+
+    public static IReadOnlyList<int> InitCountriesPopulation;
 
     void Awake()
     {
@@ -28,6 +33,10 @@ public class GameManager : MonoBehaviour
         var data = JsonUtility.FromJson<CountryListWrapper>(NewgamejsonFile.text);
         Countries = data.Countries;
         Money = data.Money;
+
+        InitCountriesIncome = Countries.Select(c => c.Income).ToList().AsReadOnly();
+        InitCountriesPopulation = Countries.Select(c => c.Population).ToList().AsReadOnly();
+
         randomizer = Random.Range(-10, 11);
 
     }
@@ -229,11 +238,16 @@ public class GameManager : MonoBehaviour
     [SerializeField] Button CountrySelectorOkButton;     // دکمه تایید
     [SerializeField] Button CountrySelectorCancelButton; // دکمه لغو
     [SerializeField] TMP_Dropdown CountrySelectorDropDown;
+    [SerializeField] TMP_InputField CountrySelectorInput;
 
-    IEnumerator CountrySelectorSet(System.Action<CountryInformation> onResult)
+
+    //این تابع از ما متغیری که قرار هست از کشور مقایسه شود بعد بودن یا نبودن دکمه مقدار را میگیرد و در خروجی کشور و مقدار تحویل میدهد
+    IEnumerator CountrySelectorSet(string variable, bool isAmount, System.Action<CountryInformation, int> onResult)
     {
         uiBackground.SetActive(true);
-
+        if (isAmount) CountrySelectorInput.gameObject.SetActive(true);
+        else CountrySelectorInput.gameObject.SetActive(false);
+        //set dropdown
         {
             CountrySelectorDropDown.ClearOptions();
             List<TMP_Dropdown.OptionData> optionDataList = new List<TMP_Dropdown.OptionData>();
@@ -254,8 +268,25 @@ public class GameManager : MonoBehaviour
         // گوش دادن به دکمه‌ها
         CountrySelectorOkButton.onClick.AddListener(() =>
         {
-            result = true;
-            finished = true;
+            if (isAmount && CountrySelectorInput.text != "")
+            {
+                // نام متغیر موردنظر مثلا population یا forces
+                FieldInfo maxLimitForAccept = typeof(CountryInformation).GetField(variable);
+                print(float.Parse(CountrySelectorInput.text));
+
+                if (float.Parse(maxLimitForAccept.GetValue(Countries.Find(_ => _ == Countries.FindAll(_ => _.IsCaptured)[CountrySelectorDropDown.value])).ToString())
+                >= float.Parse(CountrySelectorInput.text))
+                {
+                    result = true;
+                    finished = true;
+                }
+            }
+            else if (!isAmount)
+            {
+                result = true;
+                finished = true;
+            }
+
         });
 
         CountrySelectorCancelButton.onClick.AddListener(() =>
@@ -274,8 +305,20 @@ public class GameManager : MonoBehaviour
         // برگرداندن نتیجه
         CountrySelectorAnimator.SetTrigger("Close");
         uiBackground.SetActive(false);
-        if (result) onResult?.Invoke(Countries.FindAll(_ => _.IsCaptured)[CountrySelectorDropDown.value]);
-        else onResult?.Invoke(null);
+        if (result)
+        {
+            if (CountrySelectorInput.text != "")
+            {
+                onResult?.Invoke(Countries.FindAll(_ => _.IsCaptured)[CountrySelectorDropDown.value], int.Parse(CountrySelectorInput.text));
+            }
+            else
+            {
+                onResult?.Invoke(Countries.FindAll(_ => _.IsCaptured)[CountrySelectorDropDown.value], 0);
+            }
+
+
+        }
+        else onResult?.Invoke(null, 0);
 
 
     }
@@ -302,12 +345,38 @@ public class GameManager : MonoBehaviour
     public void AttackStartButton() // Will call when clicked on Attack button 
     {
         CountryInformation attacker = null;
-        StartCoroutine(CountrySelectorSet(result =>
+        StartCoroutine(CountrySelectorSet(null, false, (country, _) =>
         {
-            attacker = result;
-            if (result == null) return;
+            attacker = country;
+            if (country == null) return;
             var countries = Countries.Find(_ => _.Name == uiName.text);
             AttackStart(countries, attacker);
+            CountryPanelRefresh();
+        }));
+    }
+
+    public void DraftButton()
+    {
+        StartCoroutine(CountrySelectorSet("Population", true, (country, drafts) =>
+        {
+            if (country == null) return;
+            country.Population -= drafts;
+            country.Forces += drafts;
+            int theindex = Countries.FindIndex(_ => _ == country);
+            country.Income = Mathf.Round((float)Countries[theindex].Population / (float)InitCountriesPopulation[theindex] * InitCountriesIncome[theindex] * 100) / 100;
+            CountryPanelRefresh();
+        }));
+    }
+
+    public void DischargeButton()
+    {
+        StartCoroutine(CountrySelectorSet("Forces", true, (country, drafts) =>
+        {
+            if (country == null) return;
+            country.Population += drafts;
+            country.Forces -= drafts;
+            int theindex = Countries.FindIndex(_ => _ == country);
+            country.Income = Mathf.Round((float)Countries[theindex].Population / (float)InitCountriesPopulation[theindex] * InitCountriesIncome[theindex] * 100) / 100;
             CountryPanelRefresh();
         }));
     }
