@@ -22,7 +22,7 @@ public class GameManager : MonoBehaviour
 
     public static IReadOnlyList<float> InitCountriesIncome;
 
-    public static IReadOnlyList<int> InitCountriesPopulation;
+    public static IReadOnlyList<float> InitCountriesPopulation;
 
     void Awake()
     {
@@ -36,7 +36,6 @@ public class GameManager : MonoBehaviour
 
         InitCountriesIncome = Countries.Select(c => c.Income).ToList().AsReadOnly();
         InitCountriesPopulation = Countries.Select(c => c.Population).ToList().AsReadOnly();
-
         randomizer = Random.Range(-10, 11);
 
     }
@@ -251,14 +250,18 @@ public class GameManager : MonoBehaviour
         {
             CountrySelectorDropDown.ClearOptions();
             List<TMP_Dropdown.OptionData> optionDataList = new List<TMP_Dropdown.OptionData>();
+            int selectMatch = -1;
             foreach (var item in Countries.FindAll(_ => _.IsCaptured))
             {
                 TMP_Dropdown.OptionData optionData = new TMP_Dropdown.OptionData();
                 optionData.text = item.Name;
                 optionDataList.Add(optionData);
+                if (item.Name == uiName.text) selectMatch = optionDataList.Count - 1;
             }
             CountrySelectorDropDown.AddOptions(optionDataList);
+            if (selectMatch != -1) CountrySelectorDropDown.value = selectMatch; CountrySelectorDropDown.RefreshShownValue();
         }
+
 
         CountrySelectorAnimator.SetTrigger("Open");
 
@@ -272,10 +275,18 @@ public class GameManager : MonoBehaviour
             {
                 // نام متغیر موردنظر مثلا population یا forces
                 FieldInfo maxLimitForAccept = typeof(CountryInformation).GetField(variable);
-                print(float.Parse(CountrySelectorInput.text));
+                print(variable);
 
-                if (float.Parse(maxLimitForAccept.GetValue(Countries.Find(_ => _ == Countries.FindAll(_ => _.IsCaptured)[CountrySelectorDropDown.value])).ToString())
-                >= float.Parse(CountrySelectorInput.text))
+                if (variable != "")
+                {
+                    if (float.Parse(maxLimitForAccept.GetValue(Countries.Find(_ => _ == Countries.FindAll(_ => _.IsCaptured)[CountrySelectorDropDown.value])).ToString())
+                    >= float.Parse(CountrySelectorInput.text))
+                    {
+                        result = true;
+                        finished = true;
+                    }
+                }
+                else
                 {
                     result = true;
                     finished = true;
@@ -380,6 +391,19 @@ public class GameManager : MonoBehaviour
             CountryPanelRefresh();
         }));
     }
+    public void BuyButton()
+    {
+        StartCoroutine(CountrySelectorSet("", true, (country, userInput) =>
+        {
+            if (country == null) return;
+            if (userInput * 100000 <= Money)
+            {
+                country.Forces += userInput;
+                money -= userInput * 1000000;
+                CountryPanelRefresh();
+            }
+        }));
+    }
 
     //Attack section
 
@@ -391,37 +415,55 @@ public class GameManager : MonoBehaviour
         if (ratio >= 1.2)
         {
             WarlogLatestUpdate(attacker.Name + " wins against " + defender.Name);
-            attacker.Forces -= Mathf.Ceil(defender.Forces * 0.2f);
-            defender.Forces -= Mathf.Ceil(attacker.Forces * 0.1f);
-            if (defender.Forces <= 0 && attacker.IsCaptured)
-            {
-                CountryState(defender, true);
-                WarlogLatestUpdate(defender.Name + " captured");
-            }
+            attacker.Forces -= Mathf.CeilToInt(defender.Forces * 0.2f);
+            defender.Forces -= Mathf.CeilToInt(attacker.Forces * 0.1f);
+
         }
         else if (ratio >= 0.8)
         {
-            attacker.Forces -= Mathf.Ceil(defender.Forces * 0.4f);
-            defender.Forces -= Mathf.Ceil(attacker.Forces * 0.4f);
+            attacker.Forces -= Mathf.CeilToInt(defender.Forces * 0.4f);
+            defender.Forces -= Mathf.CeilToInt(attacker.Forces * 0.4f);
             WarlogLatestUpdate(attacker.Name + " hurts " + defender.Name);
         }
         else
         {
-            attacker.Forces -= Mathf.Ceil(defender.Forces * 0.1f);
-            defender.Forces -= Mathf.Ceil(attacker.Forces * 0.2f);
+            attacker.Forces -= Mathf.CeilToInt(defender.Forces * 0.1f);
+            defender.Forces -= Mathf.CeilToInt(attacker.Forces * 0.2f);
             WarlogLatestUpdate(attacker.Name + " loses against " + defender.Name);
-            if (attacker.Forces <= 0 && attacker.IsCaptured)
+        }
+
+        if (defender.Forces <= 0)
+        {
+            if (attacker.IsCaptured)
+            {
+                CountryState(defender, true);
+                WarlogLatestUpdate(defender.Name + " captured");
+            }
+            else if (defender.IsCaptured)
+            {
+                CountryState(defender, false);
+                WarlogLatestUpdate(defender.Name + " lost");
+            }
+        }
+        else if (attacker.Forces <= 0)
+        {
+            if (attacker.IsCaptured)
             {
                 CountryState(attacker, false);
                 WarlogLatestUpdate(attacker.Name + " lost");
-                if (Countries.FindAll(_ => _.IsCaptured).Count == 0)
-                {
-                    print("You lost");
-                    Application.Quit();
-                }
             }
-
+            else if (defender.IsCaptured)
+            {
+                CountryState(attacker, true);
+                WarlogLatestUpdate(attacker.Name + " captured");
+            }
         }
+        if (Countries.FindAll(_ => _.IsCaptured).Count == 0)
+        {
+            print("You lost");
+            Application.Quit();
+        }
+
         if (attacker.Forces < 0) attacker.Forces = 0;
         if (defender.Forces < 0) defender.Forces = 0;
     }

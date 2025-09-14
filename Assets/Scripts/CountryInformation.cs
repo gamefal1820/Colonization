@@ -5,8 +5,8 @@ public class CountryInformation
 {
     public string Name;
 
-    public int Population;
-    public float Forces;
+    public float Population;
+    public int Forces;
     public float Income;
     public float DeplomacyRate;
 
